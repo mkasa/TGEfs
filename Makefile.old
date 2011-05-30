@@ -1,0 +1,49 @@
+all: tgefs tgelzo
+
+CXX=g++
+CC=gcc
+LDFLAGS=-lfuse -pthread
+LD=g++
+INSTALLDIR:=/bio
+BINDIR:=$(INSTALLDIR)/bin
+
+tgefs: tgefs.o sha2.o minilzo.o lzocomp.o tge_fcopy.o tge_log.o tge_compctl.o tge_cache.o tge_appconfig.o
+	$(LD)	$(LDFLAGS) -o $@ $^
+
+tgelzo: tgelzo.o minilzo.o lzocomp.o tge_fcopy.o
+	$(LD)	$(LDFLAGS) -o $@ $^
+
+CXXFLAGS=-Wall -O2 -D_FILE_OFFSET_BITS=64 -DNDEBUG -pthread -g
+CFLAGS=-Wall -O2 -D_FILE_OFFSET_BITS=64 -DNDEBUG -pthread -g
+
+clean:
+	-rm *.o *~ log
+
+distclean: clean
+	-rm tgelzo lstat tgefs
+
+d:
+	-fusermount -u tst
+	./tgefs tst
+	echo 3 > tst/proc/tgefslog
+	cat tst/home/mkasa/work/tge/TGEW.pm
+	cat tst/home/mkasa/work/tge/TGEW.pm
+	cat tst/home/mkasa/work/tge/TGEW.pm
+
+dd:
+	-fusermount -u tst
+	./tgefs -d tst
+
+cc:
+	rm -i /grid2/mkasa/tgetmp/*
+
+um:
+	-fusermount -u tst
+
+install: all
+	cp tgefs tgelzo tgefs_prepareall tgefs_prepare.sh  $(BINDIR)/
+	-ln -s $(BINDIR)/tgelzo $(BINDIR)/lzo
+	-ln -s $(BINDIR)/tgelzo $(BINDIR)/unlzo
+	-ln -s $(BINDIR)/tgelzo $(BINDIR)/lcat
+
+

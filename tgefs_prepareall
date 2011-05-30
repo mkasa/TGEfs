@@ -1,0 +1,124 @@
+#!/usr/bin/env perl
+
+use strict;
+
+use Getopt::Long;
+use TGEW;
+use Term::ANSIColor;
+
+my $flag_needhelp = 0;
+my $flag_usessh   = 1;
+
+GetOptions ('help' => \$flag_needhelp,
+            'ssh'  => \$flag_usessh  );
+
+unless(TGEW::is_installed()) {
+    print STDERR "TGE is not configured yet. Please type 'tge_install' to set it up first.\n";
+    exit 1;
+}
+
+my $queuename = shift;
+unless(defined $queuename) {
+    $queuename = "all.q";
+}
+
+my $tgefs_mount_point = "$ENV{'HOME'}/tgefs";
+unless(-e $tgefs_mount_point) {
+    print STDERR "It seems that $tgefs_mount_point does not exist.\n";
+    print STDERR "Will create it.\n";
+    unless(mkdir $tgefs_mount_point) {
+	print STDERR "Failed to create the directory. Abort.\n";
+	exit 1;
+    }
+}
+
+my @qconf_output = `qconf -sq $queuename`;
+if($?) {
+    print STDERR "An error occurred while executing qconf. Please check if qconf is properly installed and it is on the PATH environmental variable.\n";
+    exit 1;
+}
+
+my %nodesWithAtLeastOneSlot;
+{
+    my $isInSlot = 0;
+    for(@qconf_output) {
+	chomp;
+	$isInSlot = 1 if(/^slots/);
+	$isInSlot = 0 if(/^tmpdir/);
+	if($isInSlot) {
+	    while(/\[(.*?)=(\d+)\]/g) {
+		my $host   = $1;
+		my $nslots = $2;
+		if($nslots > 0) {
+		    $nodesWithAtLeastOneSlot{$host} = $nslots;
+		}
+	    }
+	}
+    }
+}
+
+my $shellscript_to_submit;
+{
+    my $path_of_this_script = $^X;
+    $shellscript_to_submit = $path_of_this_script;
+    $shellscript_to_submit =~ s/[^\/]*$//;
+    $shellscript_to_submit .= "tgefs_prepare.sh";
+}
+
+unless(-e $shellscript_to_submit) {
+    print STDERR "'$shellscript_to_submit' does not exist. Consult the site administrator to check if it is properly installed.\n";
+    exit 1;
+}
+
+my $isOutputTTY = -t STDOUT;
+for my $host(sort keys %nodesWithAtLeastOneSlot) {
+    my $cmdline = "qsub -l hostname=$host $shellscript_to_submit";
+	if($flag_usessh) {
+		$cmdline = "ssh -t $host $shellscript_to_submit";
+	}
+    print STDERR color("green") if($isOutputTTY);
+    print STDERR "\% $cmdline";
+    print STDERR color("reset") if($isOutputTTY);
+    print STDERR "\n";
+    system $cmdline;
+    if($?) {
+	print STDERR color("red") if($isOutputTTY);
+	print STDERR "An error occurred while executing the above command line.";
+	print STDERR color("reset") if($isOutputTTY);
+	print STDERR "\n";
+    }
+}
+print STDERR "\n";
+print STDERR color("yellow") if($isOutputTTY);
+print STDERR "TGEfs preparation is successfully made.";
+print STDERR color("reset") if($isOutputTTY);
+print STDERR "\n\n";
+
+=pod
+
+=head1 NAME
+
+tgefs_prepareall.pl - prepare tgefs on all hosts in the cluster
+
+=head1 SYNOPSYS
+
+B<tgefs_prepareall> [queue name]
+
+=head1 DESCRIPTION
+
+This utility is to setup tgefs for each user's home directory.
+First, 'tgefs' directory is created under your home directory when it does not exist.
+Next, qconf is called to determine cluster nodes with at least one slot.
+Then, a shell script to unmount previously mounted $HOME/tgefs (if any)
+and to mount $HOME/tgefs with / is submitted to every host with at least one slot.
+
+The queue name can be specified on a command line, while 'all.q' is used by default
+if it is not specified explicitly by users.
+
+=head1 OPTIONS
+
+=item<-ssh>
+Use ssh to distribute FUSE mount scripts.
+This alternative option may be useful if you have a SSH public key with no passphrase.
+
+=cut

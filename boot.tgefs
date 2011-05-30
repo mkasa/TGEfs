@@ -1,0 +1,88 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:          boot.tgefs
+# Required-Start:
+# Should-Start:      $local_fs $remote_fs boot.fuse
+# Required-Stop:
+# Default-Start:     B
+# Default-Stop:
+# Short-Description: Start and stop tgefs.
+# Description:       Execute tgefs and mount /tgefs
+#	filesystem.
+### END INIT INFO
+
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+TGEFS=/usr/bin/tgefs
+MOUNTPOINT=/tgefs
+
+. /etc/rc.status
+rc_reset
+
+case "$1" in
+    start)
+	if [ "`whoami`x" != "rootx" ]; then
+		echo "You must be root to do that"
+		rc_failed 4
+        rc_exit
+    fi
+	if [ ! -e $MOUNTPOINT ]; then
+		echo "$MOUNTPOINT does not exist."
+		echo -n "Creating $MOUNTPOINT "
+		if ! mkdir $MOUNTPOINT; then
+			rc_failed 1
+			rc_status -v
+			rc_exit
+		fi
+		rc_status -v
+	fi
+	if (mount | grep -qw $MOUNTPOINT); then
+		echo -n "Unmounting existing mount points "
+		if ! umount $MOUNTPOINT; then
+			rc_failed 1
+			rc_status -v
+			rc_exit
+		fi
+		rc_status -v
+	fi
+	echo -n "Mounting $MOUNTPOINT"
+	if ! $TGEFS $MOUNTPOINT -o default_permissions,allow_other; then
+		rc_failed 1
+		rc_status -v
+		rc_exit
+	fi
+	rc_status -v
+	;;
+    stop)
+	if [ "`whoami`x" != "rootx" ]; then
+		echo "You must be root to do that"
+		rc_failed 4
+        rc_exit
+    fi
+	if (mount | grep -qw $MOUNTPOINT); then
+		echo -n "Unmounting existing mount points "
+		if ! umount $MOUNTPOINT; then
+			rc_failed 1
+			rc_status -v
+			rc_exit
+		fi
+		rc_status -v
+	fi
+	;;
+    status)
+	echo -n "Checking fuse filesystem"
+	rc_reset
+	if (mount | grep -qw $MOUNTPOINT); then
+	    echo -n ""	
+	else
+		rc_failed 3
+	fi
+	rc_status -v
+	;;
+    *)
+	echo "Usage: $0 {start|stop|status}"
+	exit 1
+	;;
+esac
+rc_exit
+

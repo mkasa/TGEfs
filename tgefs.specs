@@ -1,0 +1,65 @@
+#
+# spec file for package tgefs
+#
+# Copyright (c) 2007 Masahiro Kasahara <mkasa@cb.k.u-tokyo.ac.jp>
+#
+
+Name:               tgefs
+Summary:            TGE File System
+Version:            1.1
+Release:            1
+License:            GPL 2.0 or later
+Group:              System/Filesystems
+Source:             %{name}-%{version}.tar.bz2
+Requires:           libfuse2 >= 2.7.0
+BuildRequires:      libfuse2 >= 2.7.0
+PreReq:             %insserv_prereq permissions
+BuildRoot:          %{_tmppath}/%{name}-build
+
+%description
+tgefs enables users to exploit caching mechanisms for saving
+network bandwidth when accessing files over NFS. It also has
+data compression mode in which compressed data is stored,
+thus saves the HDD capacity.
+
+%prep
+%setup -q
+
+%configure
+
+%build
+make
+
+%install
+rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/init.d
+install -m755 -D boot.tgefs   $RPM_BUILD_ROOT/%{_sysconfdir}/init.d/boot.tgefs
+install -m644 -D tgefs.conf   $RPM_BUILD_ROOT/%{_sysconfdir}/tgefs.conf
+install -m644 -D tgefscc.conf $RPM_BUILD_ROOT/%{_sysconfdir}/tgefscc.conf
+%makeinstall
+
+%post
+/sbin/insserv boot.tgefs
+
+%preun
+/sbin/insserv -r boot.tgefs
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%files
+%defattr(-,root,root)
+%config %{_sysconfdir}/init.d/boot.tgefs
+%config %{_sysconfdir}/tgefs.conf
+%config %{_sysconfdir}/tgefscc.conf
+%{_bindir}/tgefs
+%{_bindir}/tgelzo
+%{_bindir}/unlzo
+%{_bindir}/lzo
+%{_bindir}/lcat
+
+%changelog
+* Thu Oct 11 2007 mkasa@cb.k.u-tokyo.ac.jp
+- Packaged to rpm.
+
+* Wed Mar 19 2008 mkasa@cb.k.u-tokyo.ac.jp
+- Modified the permission of configuration files.
