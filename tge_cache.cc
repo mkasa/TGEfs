@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <sys/vfs.h>
 #include <vector>
-#include <string>
+#include <string.h>
 #include <fstream>
 #include <algorithm>
 #include "tge_log.h"

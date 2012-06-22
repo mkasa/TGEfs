@@ -5,7 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
-#include <string>
+#include <string.h>
 #include <vector>
 #include <unistd.h>
 #include <limits.h>
